@@ -1,4 +1,4 @@
-from flask import Flask, flash, render_template, redirect, url_for, session, logging
+from flask import Flask, flash, render_template, redirect, url_for, session, logging, request
 
 from wtforms import Form, StringField, PasswordField, validators, TextAreaField
 from passlib.hash import sha256_crypt
@@ -12,7 +12,7 @@ app = Flask(__name__)
 ##                    Connection
 ##---------------------------------------------------
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/mydatabase'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@localhost/cariman'
 db = SQLAlchemy(app)
 
 ##---------------------------------------------------
@@ -20,15 +20,26 @@ db = SQLAlchemy(app)
 ##---------------------------------------------------
 
 
-class User(db.Model):
-    __tablename__ = 'Users'
-    id = db.Column( '', db.Integer, primary_key=True)
+class User (db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60), unique=False, nullable= False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(150), unique=False, nullable=False)
 
     def __repr__(self):
         return '<User %r>' % self.username
+
+class RegisterForm(Form):
+    name = StringField('Seu nome', validators=[validators.Length(min=3, max=20), validators.optional()])
+    userName = StringField('Usename', validators=[validators.Length(min=5, max=50), validators.input_required()])
+    email  = StringField('E-mail', validators=[validators.Length(min=9, max=100), validators.input_required()])
+    password =PasswordField('Senha',[
+        validators.DataRequired(),
+        validators.EqualTo('confirm', message='As senhas não combinam')
+    ])
+    confirm = PasswordField('Confirme sua senha')
 
 ##---------------------------------------------------
 ##                      ROUTES
@@ -43,9 +54,16 @@ def index():
 def about():
     return render_template('about.html')
 
-@app.route('/singin')
+@app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
-    return render_template('singin.html')
+    form = RegisterForm(request.form)
+    if request.method == 'POST' and form.validate():
+        return render_template('cadastro.html')
+    return render_template('cadastro.html', form=form)
+
+@app.errorhandler(404) 
+def not_found(e): 
+  return render_template("404.html") 
 
 
 ## Necesário para reduzir os comandos para rodar o app usando (debug=true) e ficar no fim
