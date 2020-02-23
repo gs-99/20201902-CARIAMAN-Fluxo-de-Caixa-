@@ -22,18 +22,20 @@ db = SQLAlchemy(app)
 
 class User (db.Model):
 
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = 'users'
+    id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column(db.String(60), unique=False, nullable= False)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(150), unique=False, nullable=False)
 
     def __repr__(self):
-        return '<User %r>' % self.username
+        return '<User {}>'.format(self.username)
+
 
 class RegisterForm(Form):
     name = StringField('Seu nome', validators=[validators.Length(min=3, max=20), validators.optional()])
-    userName = StringField('Usename', validators=[validators.Length(min=5, max=50), validators.input_required()])
+    username = StringField('Usename', validators=[validators.Length(min=5, max=50), validators.input_required()])
     email  = StringField('E-mail', validators=[validators.Length(min=9, max=100), validators.input_required()])
     password =PasswordField('Senha',[
         validators.DataRequired(),
@@ -58,7 +60,18 @@ def about():
 def cadastro():
     form = RegisterForm(request.form)
     if request.method == 'POST' and form.validate():
-        return render_template('cadastro.html')
+        new_user = User(
+            name = form.name.data,
+            email = form.email.data,
+            username = form.username.data,
+            password = sha256_crypt.encrypt(str(form.password.data))
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('Você foi cadastrado', 'success')
+
+        redirect(url_for('index'))
     return render_template('cadastro.html', form=form)
 
 @app.errorhandler(404) 
